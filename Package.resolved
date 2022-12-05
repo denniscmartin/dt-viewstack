@@ -1,0 +1,14 @@
+{
+  "pins" : [
+    {
+      "identity" : "dt-roundedcorners",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/denniscmartin/dt-roundedcorners.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "65d4647f4d67acb1418e486e45a49fc937143b73"
+      }
+    }
+  ],
+  "version" : 2
+}
