@@ -3,7 +3,7 @@ import SwiftUI
 import DTRoundedCorners
 
 /*
-  ----------------------
+ ----------------------
  |                      |
  |                      | -> Map()
  |                      |
@@ -15,12 +15,12 @@ import DTRoundedCorners
  |                      |   |
  |           *          | -> fingerOffset
  |                      |
-  ----------------------
+ ----------------------
  */
 
 // MARK: - Main view
 public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
-
+    
     // MARK: Properties
     let geo: GeometryProxy
     let primary: () -> Primary
@@ -30,11 +30,11 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
     private let geoFrame: CGRect
     private let nestedViewMinY: CGFloat
     private let nestedViewMaxY: CGFloat
-
+    
     private var nestedViewMidY: CGFloat {
         0.60 * geoFrame.maxY
     }
-
+    
     // MARK: State
     @State private var viewOffset: CGFloat
     @State private var viewFingerDiff: CGFloat = 0
@@ -42,7 +42,7 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
     
     // MARK: Bindings
     @Binding var searchableText: String?
-
+    
     // MARK: Init
     public init(
         geo: GeometryProxy,
@@ -62,28 +62,28 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
         self._viewOffset = State(initialValue: nestedViewMaxY)
         
     }
-
+    
     // MARK: Actions
     func drag(with fingerOffset: CGFloat) {
         if !isDragging {
-
+            
             // First drag -> lock viewFingerDiff
             viewFingerDiff = viewOffset - fingerOffset
         }
-
+        
         let viewFutureOffset = viewFingerDiff + fingerOffset
-
+        
         // If nested view is between bounds -> allow movement
         if viewFutureOffset >= nestedViewMinY && viewFutureOffset <= nestedViewMaxY {
             viewOffset = viewFutureOffset
         }
-
+        
         isDragging = true
     }
-
+    
     func moveOnEndedDrag() {
         let pctViewOffset = viewOffset / geoFrame.maxY
-
+        
         switch pctViewOffset {
         case 0.7...1.0:
             viewOffset = nestedViewMaxY
@@ -95,71 +95,77 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
             viewOffset = nestedViewMinY
         }
     }
-
+    
     // MARK: Body
     public var body: some View {
         ZStack(alignment: .bottom) {
             primary()
-
+            
             VStack {
                 toolbar()
                     .offset(y: viewOffset)
-                    .if(viewOffset < nestedViewMidY) { content in
-                        content
-                            .offset(y: nestedViewMidY)
-                    }
-
-                ZStack(alignment: .top) {
-                    Form {
-                        if searchableText != nil {
-                            TextField("Search", text: $searchableText ?? "")
-                                .submitLabel(.done)
-                                .onTapGesture {
-                                    withAnimation {
-                                        viewOffset = nestedViewMinY
-                                    }
-                                }
-                        }
-                        
-                        secondary()
-                    }
-                    .background {
-                        Rectangle()
-                            .foregroundStyle(.thinMaterial)
-                            .roundCorners(20, corners: [.topLeft, .topRight])
-                    }
-                    .scrollContentBackground(.hidden)
-                    
-                    RoundedRectangle(cornerRadius: 5)
-                        .foregroundColor(.secondary)
-                        .frame(width: 40, height: 5)
-                        .padding(.top, 5)
-                }
+                
+                SecondaryView(
+                    content: secondary,
+                    nestedViewMinY: nestedViewMinY,
+                    viewOffset: $viewOffset,
+                    searchableText: $searchableText
+                )
                 .offset(y: viewOffset)
-            }
-            .gesture(
-                DragGesture()
-                    .onChanged { value in
-                        drag(with: value.location.y)
-                    }
-                    .onEnded { _ in
-                        isDragging = false
-
-                        withAnimation {
-                            moveOnEndedDrag()
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            drag(with: value.location.y)
                         }
-                    }
-            )
+                        .onEnded { _ in
+                            isDragging = false
+                            
+                            withAnimation {
+                                moveOnEndedDrag()
+                            }
+                        }
+                )
+            }
         }
     }
 }
 
-private extension View {
-    @ViewBuilder func `if`<Content: View>(_ conditional: Bool, content: (Self) -> Content) -> some View {
-        if conditional {
-            content(self)
-        } else {
-            self
+struct SecondaryView<Content: View>: View {
+    
+    // MARK: Properties
+    let content: () -> Content
+    let nestedViewMinY: CGFloat
+    
+    // MARK: Bindings
+    @Binding var viewOffset: CGFloat
+    @Binding var searchableText: String?
+    
+    var body: some View {
+        ZStack(alignment: .top) {
+            Form {
+                if searchableText != nil {
+                    TextField("Search", text: $searchableText ?? "")
+                        .submitLabel(.done)
+                        .onTapGesture {
+                            withAnimation {
+                                viewOffset = nestedViewMinY
+                            }
+                        }
+                }
+                
+                content()
+            }
+            .background {
+                Rectangle()
+                    .foregroundStyle(.thinMaterial)
+                    .roundCorners(20, corners: [.topLeft, .topRight])
+            }
+            .scrollContentBackground(.hidden)
+            
+            RoundedRectangle(cornerRadius: 5)
+                .foregroundColor(.secondary)
+                .frame(width: 40, height: 5)
+                .padding(.top, 5)
         }
     }
 }
