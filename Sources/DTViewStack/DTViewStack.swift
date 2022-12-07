@@ -109,33 +109,33 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
                     .offset(y: viewOffset)
                 
                 SecondaryView(content: secondary)
-                .offset(y: viewOffset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            drag(with: value.location.y)
-                        }
-                        .onEnded { _ in
-                            isDragging = false
-                            
-                            withAnimation {
-                                moveOnEndedDrag()
+                    .offset(y: viewOffset)
+                    .gesture(
+                        DragGesture()
+                            .onChanged { value in
+                                drag(with: value.location.y)
+                            }
+                            .onEnded { _ in
+                                isDragging = false
+                                
+                                withAnimation {
+                                    moveOnEndedDrag()
+                                }
+                            }
+                    )
+                    .onChange(of: presenterReceiver) { newValue in
+                        if let present = newValue {
+                            withAnimation(.easeOut(duration: 0.3)) {
+                                if present == true {
+                                    viewOffset = nestedViewMinY
+                                } else {
+                                    viewOffset = nestedViewMaxY
+                                }
                             }
                         }
-                )
-                .onChange(of: presenterReceiver) { newValue in
-                    if let present = newValue {
-                        withAnimation {
-                            if present == true {
-                                viewOffset = nestedViewMinY
-                            } else {
-                                viewOffset = nestedViewMaxY
-                            }
-                        }
+                        
+                        presenterReceiver = nil
                     }
-                    
-                    presenterReceiver = nil
-                }
             }
         }
     }
@@ -147,19 +147,12 @@ struct SecondaryView<Content: View>: View {
     let content: () -> Content
     
     var body: some View {
-        ZStack(alignment: .top) {
-            content()
-                .background {
-                    Rectangle()
-                        .foregroundStyle(.thinMaterial)
-                        .roundCorners(20, corners: [.topLeft, .topRight])
-                }
-                .scrollContentBackground(.hidden)
-            
-            RoundedRectangle(cornerRadius: 5)
-                .foregroundColor(.secondary)
-                .frame(width: 40, height: 5)
-                .padding(.top, 5)
-        }
+        content()
+            .background {
+                Rectangle()
+                    .foregroundStyle(.thinMaterial)
+                    .roundCorners(20, corners: [.topLeft, .topRight])
+            }
+            .scrollContentBackground(.hidden)
     }
 }
