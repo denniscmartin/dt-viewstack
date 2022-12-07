@@ -42,17 +42,20 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
     
     // MARK: Bindings
     @Binding var searchableText: String?
+    @Binding var presenterReceiver: Bool?
     
     // MARK: Init
     public init(
         geo: GeometryProxy,
         searchableText: Binding<String?>? = nil,
+        presenterReceiver: Binding<Bool?>? = nil,
         @ViewBuilder primary: @escaping () -> Primary,
         @ViewBuilder secondary: @escaping () -> Secondary,
         @ViewBuilder toolbar: @escaping () -> Toolbar
     ) {
         self.geo = geo
         self._searchableText = searchableText ?? Binding.constant(nil)
+        self._presenterReceiver = presenterReceiver ?? Binding.constant(nil)
         self.primary = primary
         self.secondary = secondary
         self.toolbar = toolbar
@@ -105,12 +108,7 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
                 toolbar()
                     .offset(y: viewOffset)
                 
-                SecondaryView(
-                    content: secondary,
-                    nestedViewMinY: nestedViewMinY,
-                    viewOffset: $viewOffset,
-                    searchableText: $searchableText
-                )
+                SecondaryView(content: secondary)
                 .offset(y: viewOffset)
                 .gesture(
                     DragGesture()
@@ -125,6 +123,19 @@ public struct DTViewStack<Primary: View, Secondary: View, Toolbar: View>: View {
                             }
                         }
                 )
+                .onChange(of: presenterReceiver) { newValue in
+                    if let present = newValue {
+                        withAnimation {
+                            if present == true {
+                                viewOffset = nestedViewMinY
+                            } else {
+                                viewOffset = nestedViewMaxY
+                            }
+                        }
+                    }
+                    
+                    presenterReceiver = nil
+                }
             }
         }
     }
@@ -134,33 +145,16 @@ struct SecondaryView<Content: View>: View {
     
     // MARK: Properties
     let content: () -> Content
-    let nestedViewMinY: CGFloat
-    
-    // MARK: Bindings
-    @Binding var viewOffset: CGFloat
-    @Binding var searchableText: String?
     
     var body: some View {
         ZStack(alignment: .top) {
-            Form {
-                if searchableText != nil {
-                    TextField("Search", text: $searchableText ?? "")
-                        .submitLabel(.done)
-                        .onTapGesture {
-                            withAnimation {
-                                viewOffset = nestedViewMinY
-                            }
-                        }
+            content()
+                .background {
+                    Rectangle()
+                        .foregroundStyle(.thinMaterial)
+                        .roundCorners(20, corners: [.topLeft, .topRight])
                 }
-                
-                content()
-            }
-            .background {
-                Rectangle()
-                    .foregroundStyle(.thinMaterial)
-                    .roundCorners(20, corners: [.topLeft, .topRight])
-            }
-            .scrollContentBackground(.hidden)
+                .scrollContentBackground(.hidden)
             
             RoundedRectangle(cornerRadius: 5)
                 .foregroundColor(.secondary)
@@ -168,11 +162,4 @@ struct SecondaryView<Content: View>: View {
                 .padding(.top, 5)
         }
     }
-}
-
-private func ??<T>(lhs: Binding<Optional<T>>, rhs: T) -> Binding<T> {
-    Binding(
-        get: { lhs.wrappedValue ?? rhs },
-        set: { lhs.wrappedValue = $0 }
-    )
 }
